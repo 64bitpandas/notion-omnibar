@@ -1,0 +1,19 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`<HomePage /> should render and match the snapshot 1`] = `
+<div
+  id="container"
+>
+  <h1>
+    Omnibar Test
+  </h1>
+  <div
+    class="omnibar-container"
+  >
+    <input
+      class="omnibar"
+      placeholder="What's happening?"
+    />
+  </div>
+</div>
+`;

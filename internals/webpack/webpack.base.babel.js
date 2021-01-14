@@ -46,6 +46,11 @@ module.exports = options => ({
         use: 'file-loader',
       },
       {
+        test: /\.scss$/,
+        exclude: /node_modules/,
+        use: ['style-loader', 'css-loader', 'sass-loader'],
+      },
+      {
         test: /\.svg$/,
         use: [
           {
