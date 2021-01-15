@@ -1,11 +1,12 @@
 import * as chrono from 'chrono-node';
+import nlp from 'compromise';
 import wordsToNumbers from 'words-to-numbers';
 
 export const PROMISE = 'promise';
 export const COMMIT = 'commit';
 export const NOW = 'today';
 
-const TBD = 'tbd';
+const TENSE = 'TENSE';
 
 // millisecond conversions
 export const MINUTE = 60000;
@@ -14,16 +15,16 @@ export const DAY = 24 * HOUR;
 
 export const DEFAULT_PATTERNS = {
   '$1 at $DATE1': {
-    type: TBD,
+    type: TENSE,
     description: 1,
     priority: 0,
     start: 'DATE1',
-    duration: HOUR,
   },
   '$1 on $DATE1': {
-    type: TBD,
+    type: TENSE,
     description: 1,
     priority: 0,
+    start: 'DATE1',
   },
   '$1 at $DATE1 for $DURATION2': {
     type: PROMISE,
@@ -36,6 +37,7 @@ export const DEFAULT_PATTERNS = {
     type: PROMISE,
     description: 1,
     priority: 0,
+    start: 'DATE1',
   },
   // '$1 every $DATE1': {
   //   type: PROMISE,
@@ -43,7 +45,7 @@ export const DEFAULT_PATTERNS = {
   //   priority: 0,
   // },
   '$1 from $DATE1 to $DATE2': {
-    type: TBD,
+    type: TENSE,
     description: 1,
     start: 'DATE1',
     end: 'DATE2',
@@ -56,7 +58,7 @@ export const DEFAULT_PATTERNS = {
     duration: 'DURATION1',
   },
   $1: {
-    type: COMMIT,
+    type: TENSE,
     description: 1,
     priority: -1,
   },
@@ -69,10 +71,13 @@ const TEMP_LABELS = {
   },
 };
 
-/** Returns a Date object, or false if str cannot be parsed into a date. */
-export const getDate = str => {
+/** Returns a Date object, or false if str cannot be parsed into a date.
+ *  Set forwardDate to true if this date is in the future, false if it
+ *  is in the past.
+ */
+export const getDate = (str, args) => {
   const parse = chrono.parse(str, today(), {
-    forwardDate: true,
+    forwardDate: args ? args.forwardDate : true,
   });
   if (parse.length > 0) {
     return parse[0].start.date();
@@ -138,11 +143,19 @@ export const applyPattern = (pattern, str) => {
   const groups = readCaptureGroups(pattern, str);
   const result = {};
 
+  if (data.type === TENSE) {
+    result.type = Object.keys(groups).some(key => isPastTense(groups[key]))
+      ? COMMIT
+      : PROMISE;
+  }
+
   Object.keys(data).forEach(key => {
     if (groups[data[key]] !== undefined) {
       result[key] =
-        applyCaptureType(groups[data[key]], data[key]) || groups[data[key]];
-    } else result[key] = data[key];
+        applyCaptureType(groups[data[key]], data[key], {
+          forwardDate: result.type === PROMISE,
+        }) || groups[data[key]];
+    } else result[key] = result[key] || data[key];
   });
 
   if (result.start) {
@@ -151,10 +164,13 @@ export const applyPattern = (pattern, str) => {
   } else if (result.end) {
     if (result.end === NOW) result.end = today();
     result.start = result.start || result.end - result.duration;
-  }
-
-  if (result.type === TBD) {
-    result.type = result.end > today() ? PROMISE : COMMIT;
+  } else {
+    Object.keys(groups).forEach(key => {
+      const date = chrono.parseDate(groups[key], today(), {
+        forwardDate: result.type === PROMISE,
+      });
+      if (date) result.start = date;
+    });
   }
 
   return {
@@ -230,10 +246,10 @@ const getCaptureType = str => {
 
 // Applices a given capture type (like DATE), or
 // returns false if the given capture is invalid.
-const applyCaptureType = (str, capture) => {
+const applyCaptureType = (str, capture, args) => {
   const cap = getCaptureType(capture);
   if (DEFAULT_CAPTURES[cap]) {
-    return DEFAULT_CAPTURES[cap](str);
+    return DEFAULT_CAPTURES[cap](str, args);
   }
   return false;
 };
@@ -281,4 +297,9 @@ export const findLabels = str => {
 
 const clean = str => str.trim().toLowerCase();
 const isNumeric = value => /^\d+$/.test(value);
+const isPastTense = str =>
+  nlp(str)
+    .match('.? #PastTense .?')
+    .terms()
+    .text() !== '';
 export const today = () => chrono.parseDate('today');

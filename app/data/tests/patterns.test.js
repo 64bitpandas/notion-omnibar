@@ -1,3 +1,6 @@
+import nlp from 'compromise';
+import * as chrono from 'chrono-node';
+
 import {
   getCaptureGroup,
   readCaptureGroups,
@@ -10,6 +13,7 @@ import {
   checkPattern,
   applyPattern,
   COMMIT,
+  PROMISE,
   today,
 } from '../patterns';
 
@@ -180,16 +184,58 @@ describe('applyPattern()', () => {
       timestamp: today(),
     });
   });
-  test('TBD commit', () => {
+  test('NLP commits', () => {
     expect(
-      applyPattern('$1 on $DURATION1', 'did some things at 4pm yesterday'),
+      applyPattern('$1 at $DATE1', 'did some things at 4pm yesterday'),
     ).toMatchObject({
       type: COMMIT,
       description: 'did some things',
-      start: today() - HOUR * 4,
-      end: today(),
-      duration: HOUR * 4,
+      start: chrono.parseDate('4pm yesterday'),
       timestamp: today(),
     });
+    expect(
+      applyPattern('$1 on $DATE1', 'did some things on tuesday'),
+    ).toMatchObject({
+      type: COMMIT,
+      description: 'did some things',
+      start: chrono.parseDate('tuesday'),
+      timestamp: today(),
+    });
+    expect(
+      applyPattern('$1 on $DATE1', 'will do some things on tuesday'),
+    ).toMatchObject({
+      type: PROMISE,
+      description: 'will do some things',
+      start: chrono.parseDate('tuesday', today(), { forwardDate: true }),
+      timestamp: today(),
+    });
+  });
+});
+
+describe('testing some functions', () => {
+  test('testing nlp', () => {
+    expect(
+      nlp('i am dying lol')
+        .match('. #PastTense .')
+        .terms()
+        .text(),
+    ).toEqual('');
+    expect(
+      nlp('i died lol')
+        .match('. #PastTense .')
+        .terms()
+        .text(),
+    ).toEqual('i died lol');
+    expect(
+      nlp('did some things')
+        .match('.? #PastTense .?')
+        .terms()
+        .text(),
+    ).toBeTruthy();
+  });
+
+  test('testing chrono', () => {
+    expect(chrono.parseDate('no date here')).toBeFalsy();
+    expect(chrono.parseDate('i did some things today')).toEqual(today());
   });
 });
