@@ -60,30 +60,6 @@ const TEMP_LABELS = {
   },
 };
 
-const DEFAULT_CAPTURES = {
-  DATE: getDate,
-  DURATION: getDuration,
-};
-
-// export const checkPattern = (pattern, str) => {
-//   const splitPattern = pattern.split(' ');
-//   const splitStr = str.split(' ');
-
-//   while (splitPattern.length > 0) {
-//     splitPattern.splice(0, 1);
-//   }
-// };
-
-// export const applyPattern = (pattern, str) => {
-//   if (PATTERNS[pattern] === undefined)
-//     throw new Error(`Undefined pattern: ${pattern}`);
-//   const data = PATTERNS[pattern];
-//   return {
-//     type: data.type,
-//     description: false,
-//   };
-// };
-
 export const getDate = str => {
   const parse = chrono.parse(str, chrono.parseDate('today'), {
     forwardDate: true,
@@ -115,6 +91,41 @@ export const getDuration = str => {
 
   return total === 0 ? false : total;
 };
+
+const DEFAULT_CAPTURES = {
+  DATE: getDate,
+  DURATION: getDuration,
+};
+
+export const checkPattern = (pattern, str) => {
+  const groups = readCaptureGroups(pattern, str);
+  const splitPattern = pattern.split(' ');
+
+  let valid = true;
+  let reconstructedStr = '';
+
+  splitPattern.forEach(chunk => {
+    if (getCaptureGroup(chunk)) {
+      reconstructedStr += ` ${groups[getCaptureGroup(chunk)]}`;
+      if (getCaptureType(chunk)) {
+        valid =
+          valid && applyCaptureType(groups[getCaptureGroup(chunk)], chunk);
+      }
+    } else reconstructedStr += ` ${chunk}`;
+  });
+
+  return valid && clean(reconstructedStr) === clean(str);
+};
+
+// export const applyPattern = (pattern, str) => {
+//   if (PATTERNS[pattern] === undefined)
+//     throw new Error(`Undefined pattern: ${pattern}`);
+//   const data = PATTERNS[pattern];
+//   return {
+//     type: data.type,
+//     description: false,
+//   };
+// };
 
 const multiplierToDuration = (multiplier, unit) => {
   let num;
@@ -158,6 +169,24 @@ export const getCaptureGroup = str =>
   new RegExp(`^\\$(${Object.keys(DEFAULT_CAPTURES).join('|')})?\\d+$`).test(str)
     ? str.substring(1)
     : false;
+
+// Takes in a string of format $TYPE1 and returns just the TYPE portion of it.
+const getCaptureType = str => {
+  const group = getCaptureGroup(str);
+  if (!group) return false;
+
+  return Object.keys(DEFAULT_CAPTURES).find(
+    capture => group.substring(0, capture.length) === capture,
+  );
+};
+
+const applyCaptureType = (str, capture) => {
+  const cap = getCaptureType(capture);
+  if (DEFAULT_CAPTURES[cap]) {
+    return DEFAULT_CAPTURES[cap](str);
+  }
+  return false;
+};
 
 export const readCaptureGroups = (pattern, str) => {
   const splitPattern = pattern.split(' ');

@@ -7,6 +7,7 @@ import {
   DAY,
   HOUR,
   MINUTE,
+  checkPattern,
 } from '../patterns';
 
 describe('getCaptureGroup()', () => {
@@ -81,6 +82,7 @@ describe('getDate()', () => {
   test('gets basic dates', () => {
     expect(getDate('today')).toBeTruthy();
     expect(getDate('tomorrow')).toBeTruthy();
+    expect(getDate('tuesday')).toBeTruthy();
     expect(getDate('next tuesday')).toBeTruthy();
     expect(getDate('4 weeks from now')).toBeTruthy();
     expect(getDate('5 years from now')).toBeTruthy();
@@ -131,5 +133,25 @@ describe('getDuration()', () => {
   test('works on fuzzy inputs', () => {
     expect(getDuration('on day')).toEqual(DAY);
     expect(getDuration('on hundrd days')).toEqual(DAY * 100);
+  });
+});
+
+describe('checkPattern()', () => {
+  test('works on basic patterns', () => {
+    expect(checkPattern(`$1`, 'hello world')).toBeTruthy();
+    expect(checkPattern(`$1 and $2`, 'hello world and foo bars')).toBeTruthy();
+  });
+  test('rejects invalid', () => {
+    expect(checkPattern(`$1 and $2`, 'hello world')).toBeFalsy();
+  });
+
+  test('works on dates and durations', () => {
+    expect(
+      checkPattern(`it's $DATE1 my bois`, `it's tuesday my bois`),
+    ).toBeTruthy();
+    expect(checkPattern(`it's $DATE1 my bois`, `it's sad my bois`)).toBeFalsy();
+    expect(checkPattern(`in $DURATION1`, `in foobars`)).toBeFalsy();
+    expect(checkPattern(`in $DURATION1`, `in january`)).toBeFalsy();
+    expect(checkPattern(`in $DURATION1`, `in 4 hours 30 minutes`)).toBeTruthy();
   });
 });
