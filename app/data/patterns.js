@@ -87,6 +87,7 @@ export const getDate = (str, args) => {
 
 /** Returns a duration in milliseconds, false if not a duration. */
 export const getDuration = str => {
+  if (str === undefined) return false;
   const cleaned = clean(str).split(' ');
   if (cleaned.length === 0) return false;
 
@@ -158,13 +159,15 @@ export const applyPattern = (pattern, str) => {
     } else result[key] = result[key] || data[key];
   });
 
-  if (result.start) {
+  // Fill in start/end given durations
+  if (result.start && result.duration) {
     if (result.start === NOW) result.start = today();
     result.end = result.end || result.start + result.duration;
-  } else if (result.end) {
+  } else if (result.end && result.duration) {
     if (result.end === NOW) result.end = today();
     result.start = result.start || result.end - result.duration;
   } else {
+    // Infer date from non-pattern
     Object.keys(groups).forEach(key => {
       const date = chrono.parseDate(groups[key], today(), {
         forwardDate: result.type === PROMISE,
@@ -181,10 +184,11 @@ export const applyPattern = (pattern, str) => {
 
 export const applyAllPatterns = str => {
   const result = [];
+  if (clean(str) === '') return result;
   Object.keys(DEFAULT_PATTERNS).forEach(pattern => {
     if (checkPattern(pattern, str)) result.push(applyPattern(pattern, str));
   });
-  return result.sort((a, b) => a.priority - b.priority);
+  return result.sort((a, b) => b.priority - a.priority);
 };
 
 /** Converts a natural language duration (like 'two hours ten minutes') to milliseconds. */

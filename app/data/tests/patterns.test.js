@@ -15,6 +15,7 @@ import {
   COMMIT,
   PROMISE,
   today,
+  applyAllPatterns,
 } from '../patterns';
 
 describe('getCaptureGroup()', () => {
@@ -237,5 +238,26 @@ describe('testing some functions', () => {
   test('testing chrono', () => {
     expect(chrono.parseDate('no date here')).toBeFalsy();
     expect(chrono.parseDate('i did some things today')).toEqual(today());
+  });
+});
+
+describe('applyAllPatterns()', () => {
+  test('matches default pattern', () => {
+    expect(applyAllPatterns('hello world')).toContainEqual({
+      type: PROMISE,
+      priority: -1,
+      description: 'hello world',
+      timestamp: today(),
+    });
+  });
+  test('hides default pattern', () => {
+    expect(applyAllPatterns('do something at 4pm tomorrow')).toContainEqual({
+      type: PROMISE,
+      priority: 0,
+      description: 'hello world',
+      timestamp: today(),
+      start: chrono.parseDate('4pm tomorrow'),
+    });
+    expect(applyAllPatterns('do something at 4pm tomorrow')).toHaveLength(1);
   });
 });
