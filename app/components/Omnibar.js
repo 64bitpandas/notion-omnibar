@@ -2,7 +2,14 @@ import React, { useState } from 'react';
 import Autosuggest from 'react-autosuggest';
 import spacetime from 'spacetime';
 import * as chrono from 'chrono-node';
-import { applyAllPatterns, COMMIT, PROMISE, today } from '../data/patterns';
+import {
+  applyAllPatterns,
+  COMMIT,
+  PROMISE,
+  today,
+  TEMP_LABELS,
+  findLabels,
+} from '../data/patterns';
 import '../styles/omnibar.scss';
 import Emoji from './Emoji';
 
@@ -34,6 +41,7 @@ export default function Omnibar() {
           {formatDate(suggestion)}
         </div>
       )}
+      {formatLabels(suggestion)}
       {/* {suggestion.start && } */}
       <p className="description">{suggestion.description}</p>
     </div>
@@ -75,6 +83,27 @@ export default function Omnibar() {
       }`;
     }
     throw new Error('Start date undefined!');
+  };
+
+  const formatLabels = () => {
+    const result = [];
+
+    findLabels(value).forEach(label => {
+      result.push(
+        <div
+          className="tag"
+          style={{ backgroundColor: TEMP_LABELS[label].color }}
+          key={label}
+        >
+          {TEMP_LABELS[label].emoji && (
+            <Emoji symbol={TEMP_LABELS[label].emoji} />
+          )}
+          {label}
+        </div>,
+      );
+    });
+
+    return result;
   };
 
   return (

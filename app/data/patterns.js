@@ -93,9 +93,10 @@ export const DEFAULT_PATTERNS = {
   },
 };
 
-const TEMP_LABELS = {
+export const TEMP_LABELS = {
   school: {
-    color: 'blue',
+    color: '#fec89a',
+    emoji: '📘',
     keywords: ['school', 'homework', 'hw'],
   },
 };
