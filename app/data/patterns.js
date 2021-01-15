@@ -1,12 +1,15 @@
 import * as chrono from 'chrono-node';
 import nlp from 'compromise';
+import spacetime from 'spacetime';
 import wordsToNumbers from 'words-to-numbers';
 
 export const PROMISE = 'promise';
 export const COMMIT = 'commit';
 export const NOW = 'today';
 
+// variable promise/commit handling
 const TENSE = 'TENSE';
+const DATE = 'DATE';
 
 // millisecond conversions
 export const MINUTE = 60000;
@@ -59,32 +62,37 @@ export const DEFAULT_PATTERNS = {
   //   priority: 5,
   // },
   '$1 for $DURATION1': {
-    type: COMMIT,
+    type: TENSE + DATE,
     description: 1,
-    end: NOW,
     duration: 'DURATION1',
     priority: 0,
   },
   '$1 for $DURATION1 starting $DATE1': {
-    type: COMMIT,
+    type: TENSE,
     description: 1,
     start: 'DATE1',
     duration: 'DURATION1',
     priority: 5,
   },
   '$1 for $DURATION1 ending $DATE1': {
-    type: COMMIT,
+    type: TENSE + DATE,
     description: 1,
     end: 'DATE1',
     duration: 'DURATION1',
     priority: 5,
   },
   '$1 for $DURATION1 from $DATE2': {
-    type: COMMIT,
+    type: DATE,
     description: 1,
     end: 'DATE1',
     duration: 'DURATION1',
     priority: 5,
+  },
+  '$1 starting $DATE1': {
+    type: TENSE,
+    description: 1,
+    start: 'DATE1',
+    priority: 0,
   },
   $1: {
     type: TENSE,
@@ -94,7 +102,7 @@ export const DEFAULT_PATTERNS = {
 };
 
 export const TEMP_LABELS = {
-  school: {
+  School: {
     color: '#fec89a',
     emoji: '📘',
     keywords: ['school', 'homework', 'hw'],
@@ -174,10 +182,19 @@ export const applyPattern = (pattern, str) => {
   const groups = readCaptureGroups(pattern, str);
   const result = {};
 
-  if (data.type === TENSE) {
+  if (data.type.includes(TENSE)) {
     result.type = Object.keys(groups).some(key => isPastTense(groups[key]))
       ? COMMIT
       : PROMISE;
+  } else if (data.type === DATE) {
+    if (data.start)
+      result.type = spacetime(data.timestamp).isBefore(spacetime(data.start))
+        ? COMMIT
+        : PROMISE;
+    else
+      result.type = spacetime(data.timestamp).isBefore(spacetime(data.end))
+        ? COMMIT
+        : PROMISE;
   }
 
   Object.keys(data).forEach(key => {
@@ -192,10 +209,14 @@ export const applyPattern = (pattern, str) => {
   // Fill in start/end given durations
   if (result.start && result.duration) {
     if (result.start === NOW) result.start = today();
-    result.end = result.end || result.start + result.duration;
+    result.end =
+      result.end ||
+      chrono.parse(`in ${result.duration / 1000} seconds}`, result.start);
   } else if (result.end && result.duration) {
     if (result.end === NOW) result.end = today();
-    result.start = result.start || result.end - result.duration;
+    result.start =
+      result.start ||
+      chrono.parseDate(`${result.duration / 1000} seconds ago}`, result.end);
   } else {
     // Infer date from non-pattern
     Object.keys(groups).forEach(key => {
@@ -206,9 +227,23 @@ export const applyPattern = (pattern, str) => {
         result.start = date[0].start.date();
         result.end = date[0].end ? date[0].end.date() : undefined;
         result.description = result.description.replace(date[0].text, '');
-        console.log(result.start);
       }
     });
+  }
+
+  // start/end inference from tense and duration
+  if (data.type === TENSE + DATE) {
+    if (result.type === COMMIT) {
+      result.end = today();
+      result.start = chrono.parseDate(`${result.duration / 1000} seconds ago}`);
+    } else {
+      result.start = today();
+      result.end = chrono.parse(
+        `in ${result.duration / 1000} seconds}`,
+        today(),
+      );
+    }
+    console.log(result);
   }
 
   return {

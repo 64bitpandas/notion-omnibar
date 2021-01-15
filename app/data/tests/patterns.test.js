@@ -250,13 +250,14 @@ describe('applyAllPatterns()', () => {
       timestamp: today(),
     });
   });
-  test('hides default pattern', () => {
+  test('default pattern date matching', () => {
     expect(applyAllPatterns('do something at 4pm tomorrow')).toContainEqual({
       type: PROMISE,
-      priority: 0,
-      description: 'hello world',
+      priority: -1,
+      description: 'do something ',
       timestamp: today(),
       start: chrono.parseDate('4pm tomorrow'),
+      end: undefined,
     });
     expect(applyAllPatterns('do something at 4pm tomorrow')).toHaveLength(1);
   });
