@@ -5,6 +5,8 @@ export const PROMISE = 'promise';
 export const COMMIT = 'commit';
 export const NOW = 'today';
 
+const TBD = 'tbd';
+
 // millisecond conversions
 export const MINUTE = 60000;
 export const HOUR = 60 * MINUTE;
@@ -12,7 +14,14 @@ export const DAY = 24 * HOUR;
 
 export const DEFAULT_PATTERNS = {
   '$1 at $DATE1': {
-    type: PROMISE,
+    type: TBD,
+    description: 1,
+    priority: 0,
+    start: 'DATE1',
+    duration: HOUR,
+  },
+  '$1 on $DATE1': {
+    type: TBD,
     description: 1,
     priority: 0,
   },
@@ -34,7 +43,7 @@ export const DEFAULT_PATTERNS = {
   //   priority: 0,
   // },
   '$1 from $DATE1 to $DATE2': {
-    type: PROMISE,
+    type: TBD,
     description: 1,
     start: 'DATE1',
     end: 'DATE2',
@@ -60,8 +69,9 @@ const TEMP_LABELS = {
   },
 };
 
+/** Returns a Date object, or false if str cannot be parsed into a date. */
 export const getDate = str => {
-  const parse = chrono.parse(str, chrono.parseDate('today'), {
+  const parse = chrono.parse(str, today(), {
     forwardDate: true,
   });
   if (parse.length > 0) {
@@ -70,7 +80,7 @@ export const getDate = str => {
   return false;
 };
 
-// Returns a duration in milliseconds, false if not a duration.
+/** Returns a duration in milliseconds, false if not a duration. */
 export const getDuration = str => {
   const cleaned = clean(str).split(' ');
   if (cleaned.length === 0) return false;
@@ -97,6 +107,7 @@ const DEFAULT_CAPTURES = {
   DURATION: getDuration,
 };
 
+/** Verifies that a string matches a particular pattern. */
 export const checkPattern = (pattern, str) => {
   const groups = readCaptureGroups(pattern, str);
   const splitPattern = pattern.split(' ');
@@ -117,16 +128,50 @@ export const checkPattern = (pattern, str) => {
   return valid && clean(reconstructedStr) === clean(str);
 };
 
-// export const applyPattern = (pattern, str) => {
-//   if (PATTERNS[pattern] === undefined)
-//     throw new Error(`Undefined pattern: ${pattern}`);
-//   const data = PATTERNS[pattern];
-//   return {
-//     type: data.type,
-//     description: false,
-//   };
-// };
+/**
+ * Applies capture groups to a pattern to return a final object with all data.
+ */
+export const applyPattern = (pattern, str) => {
+  if (DEFAULT_PATTERNS[pattern] === undefined)
+    throw new Error(`Undefined pattern: ${pattern}`);
+  const data = DEFAULT_PATTERNS[pattern];
+  const groups = readCaptureGroups(pattern, str);
+  const result = {};
 
+  Object.keys(data).forEach(key => {
+    if (groups[data[key]] !== undefined) {
+      result[key] =
+        applyCaptureType(groups[data[key]], data[key]) || groups[data[key]];
+    } else result[key] = data[key];
+  });
+
+  if (result.start) {
+    if (result.start === NOW) result.start = today();
+    result.end = result.end || result.start + result.duration;
+  } else if (result.end) {
+    if (result.end === NOW) result.end = today();
+    result.start = result.start || result.end - result.duration;
+  }
+
+  if (result.type === TBD) {
+    result.type = result.end > today() ? PROMISE : COMMIT;
+  }
+
+  return {
+    ...result,
+    timestamp: today(),
+  };
+};
+
+export const applyAllPatterns = str => {
+  const result = [];
+  Object.keys(DEFAULT_PATTERNS).forEach(pattern => {
+    if (checkPattern(pattern, str)) result.push(applyPattern(pattern, str));
+  });
+  return result.sort((a, b) => a.priority - b.priority);
+};
+
+/** Converts a natural language duration (like 'two hours ten minutes') to milliseconds. */
 const multiplierToDuration = (multiplier, unit) => {
   let num;
   if (multiplier === '') return false;
@@ -159,20 +204,23 @@ const multiplierToDuration = (multiplier, unit) => {
   }
 };
 
+// Returns true if the input string is a valid unit of time, false otherwise.
 const isUnit = str => {
   let units = ['day', 'hour', 'minute', 'month', 'year'];
   units = units.concat(units.map(unit => `${unit}s`));
   return units.includes(str);
 };
 
+// Takes in a string of format $TYPE1 and returns just the TYPE1 portion of it,
+// or false if the string isn't in the correct format.
 export const getCaptureGroup = str =>
   new RegExp(`^\\$(${Object.keys(DEFAULT_CAPTURES).join('|')})?\\d+$`).test(str)
     ? str.substring(1)
     : false;
 
-// Takes in a string of format $TYPE1 and returns just the TYPE portion of it.
+// Takes in a string of format $TYPE1 or TYPE1 and returns just the TYPE portion of it.
 const getCaptureType = str => {
-  const group = getCaptureGroup(str);
+  const group = getCaptureGroup(str) || getCaptureGroup(`$${str}`);
   if (!group) return false;
 
   return Object.keys(DEFAULT_CAPTURES).find(
@@ -180,6 +228,8 @@ const getCaptureType = str => {
   );
 };
 
+// Applices a given capture type (like DATE), or
+// returns false if the given capture is invalid.
 const applyCaptureType = (str, capture) => {
   const cap = getCaptureType(capture);
   if (DEFAULT_CAPTURES[cap]) {
@@ -188,6 +238,9 @@ const applyCaptureType = (str, capture) => {
   return false;
 };
 
+// Given a string and a pattern, returns an object whose
+// keys are the capture groups and the values are the
+// strings they are mapped to.
 export const readCaptureGroups = (pattern, str) => {
   const splitPattern = pattern.split(' ');
   const splitStr = str.split(' ');
@@ -228,3 +281,4 @@ export const findLabels = str => {
 
 const clean = str => str.trim().toLowerCase();
 const isNumeric = value => /^\d+$/.test(value);
+export const today = () => chrono.parseDate('today');

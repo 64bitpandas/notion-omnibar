@@ -8,6 +8,9 @@ import {
   HOUR,
   MINUTE,
   checkPattern,
+  applyPattern,
+  COMMIT,
+  today,
 } from '../patterns';
 
 describe('getCaptureGroup()', () => {
@@ -147,11 +150,46 @@ describe('checkPattern()', () => {
 
   test('works on dates and durations', () => {
     expect(
-      checkPattern(`it's $DATE1 my bois`, `it's tuesday my bois`),
+      checkPattern(`it's $DATE1 my dudes`, `it's wednesday my dudes`),
     ).toBeTruthy();
     expect(checkPattern(`it's $DATE1 my bois`, `it's sad my bois`)).toBeFalsy();
     expect(checkPattern(`in $DURATION1`, `in foobars`)).toBeFalsy();
     expect(checkPattern(`in $DURATION1`, `in january`)).toBeFalsy();
     expect(checkPattern(`in $DURATION1`, `in 4 hours 30 minutes`)).toBeTruthy();
+  });
+});
+
+describe('applyPattern()', () => {
+  test('basic commit', () => {
+    expect(applyPattern('$1', 'did some things')).toMatchObject({
+      type: COMMIT,
+      description: 'did some things',
+      priority: -1,
+      timestamp: today(),
+    });
+  });
+  test('timed commit', () => {
+    expect(
+      applyPattern('$1 for $DURATION1', 'did some things for 4 hours'),
+    ).toMatchObject({
+      type: COMMIT,
+      description: 'did some things',
+      start: today() - HOUR * 4,
+      end: today(),
+      duration: HOUR * 4,
+      timestamp: today(),
+    });
+  });
+  test('TBD commit', () => {
+    expect(
+      applyPattern('$1 on $DURATION1', 'did some things at 4pm yesterday'),
+    ).toMatchObject({
+      type: COMMIT,
+      description: 'did some things',
+      start: today() - HOUR * 4,
+      end: today(),
+      duration: HOUR * 4,
+      timestamp: today(),
+    });
   });
 });
