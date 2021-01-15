@@ -14,12 +14,12 @@ export const HOUR = 60 * MINUTE;
 export const DAY = 24 * HOUR;
 
 export const DEFAULT_PATTERNS = {
-  '$1 at $DATE1': {
-    type: TENSE,
-    description: 1,
-    priority: 0,
-    start: 'DATE1',
-  },
+  // '$1 at $DATE1': {
+  //   type: TENSE,
+  //   description: 1,
+  //   priority: 0,
+  //   start: 'DATE1',
+  // },
   '$1 on $DATE1': {
     type: TENSE,
     description: 1,
@@ -31,7 +31,14 @@ export const DEFAULT_PATTERNS = {
     description: 1,
     start: 'DATE1',
     duration: 'DURATION2',
-    priority: 0,
+    priority: 5,
+  },
+  '$1 on $DATE1 for $DURATION2': {
+    type: PROMISE,
+    description: 1,
+    start: 'DATE1',
+    duration: 'DURATION2',
+    priority: 5,
   },
   '$1 before $DATE1': {
     type: PROMISE,
@@ -44,18 +51,40 @@ export const DEFAULT_PATTERNS = {
   //   description: 1,
   //   priority: 0,
   // },
-  '$1 from $DATE1 to $DATE2': {
-    type: TENSE,
-    description: 1,
-    start: 'DATE1',
-    end: 'DATE2',
-    priority: 0,
-  },
+  // '$1 from $DATE1 to $DATE2': {
+  //   type: TENSE,
+  //   description: 1,
+  //   start: 'DATE1',
+  //   end: 'DATE2',
+  //   priority: 5,
+  // },
   '$1 for $DURATION1': {
     type: COMMIT,
     description: 1,
     end: NOW,
     duration: 'DURATION1',
+    priority: 0,
+  },
+  '$1 for $DURATION1 starting $DATE1': {
+    type: COMMIT,
+    description: 1,
+    start: 'DATE1',
+    duration: 'DURATION1',
+    priority: 5,
+  },
+  '$1 for $DURATION1 ending $DATE1': {
+    type: COMMIT,
+    description: 1,
+    end: 'DATE1',
+    duration: 'DURATION1',
+    priority: 5,
+  },
+  '$1 for $DURATION1 from $DATE2': {
+    type: COMMIT,
+    description: 1,
+    end: 'DATE1',
+    duration: 'DURATION1',
+    priority: 5,
   },
   $1: {
     type: TENSE,
@@ -169,10 +198,15 @@ export const applyPattern = (pattern, str) => {
   } else {
     // Infer date from non-pattern
     Object.keys(groups).forEach(key => {
-      const date = chrono.parseDate(groups[key], today(), {
+      const date = chrono.parse(groups[key], today(), {
         forwardDate: result.type === PROMISE,
       });
-      if (date) result.start = date;
+      if (date.length > 0) {
+        result.start = date[0].start.date();
+        result.end = date[0].end ? date[0].end.date() : undefined;
+        result.description = result.description.replace(date[0].text, '');
+        console.log(result.start);
+      }
     });
   }
 
@@ -183,12 +217,16 @@ export const applyPattern = (pattern, str) => {
 };
 
 export const applyAllPatterns = str => {
-  const result = [];
+  let result = [];
   if (clean(str) === '') return result;
   Object.keys(DEFAULT_PATTERNS).forEach(pattern => {
     if (checkPattern(pattern, str)) result.push(applyPattern(pattern, str));
   });
-  return result.sort((a, b) => b.priority - a.priority);
+  result = result.sort((a, b) => b.priority - a.priority);
+  if (result.length > 1) {
+    result = result.filter(item => item.priority >= 0);
+  }
+  return result;
 };
 
 /** Converts a natural language duration (like 'two hours ten minutes') to milliseconds. */

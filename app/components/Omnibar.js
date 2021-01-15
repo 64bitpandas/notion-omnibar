@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Autosuggest from 'react-autosuggest';
 import spacetime from 'spacetime';
 import * as chrono from 'chrono-node';
-import { applyAllPatterns, COMMIT, PROMISE } from '../data/patterns';
+import { applyAllPatterns, COMMIT, PROMISE, today } from '../data/patterns';
 import '../styles/omnibar.scss';
 import Emoji from './Emoji';
 
@@ -19,13 +19,13 @@ export default function Omnibar() {
       {suggestion.type === COMMIT && (
         <div className="tag tag-commit">
           <Emoji symbol="✅" />
-          Commit
+          Done!
         </div>
       )}
       {suggestion.type === PROMISE && (
         <div className="tag tag-promise">
           <Emoji symbol="🔮" />
-          Promise
+          Todo
         </div>
       )}
       {suggestion.start && (
@@ -54,12 +54,20 @@ export default function Omnibar() {
     const start = spacetime(data.start);
     const end = spacetime(data.end);
     if (data.start) {
-      const startFormat = start.isBetween(
+      const timestamp = spacetime(data.timestamp);
+      const isSameTime =
+        timestamp.second() === start.second() &&
+        timestamp.minute() === start.minute() &&
+        timestamp.hour() === start.hour();
+      let startFormat = start.isBetween(
         spacetime(chrono.parseDate('last week')),
         spacetime(chrono.parseDate('next week')),
       )
-        ? `{day} the {date-ordinal} {time}`
-        : `{day-short}. {month} {date} {time}`;
+        ? `{day} the {date-ordinal} ${isSameTime ? '' : `{time}`}`
+        : `{day-short}. {month} {date} ${isSameTime ? '' : `{time}`}`;
+
+      if (start.diff(spacetime(today()), 'year'))
+        startFormat = `{numeric-us} ${isSameTime ? '' : `{time}`}`;
 
       const endFormat = `{time}`;
       return `${start.format(startFormat)}${
