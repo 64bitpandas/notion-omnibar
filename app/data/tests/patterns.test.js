@@ -77,12 +77,12 @@ describe('findLabels()', () => {
     expect(findLabels('no labels here')).toEqual([]);
   });
   test('returns a label', () => {
-    expect(findLabels('do hw')).toEqual(['school']);
-    expect(findLabels('do homework')).toEqual(['school']);
-    expect(findLabels('do school work')).toEqual(['school']);
+    expect(findLabels('do hw')).toEqual(['School']);
+    expect(findLabels('do homework')).toEqual(['School']);
+    expect(findLabels('do school work')).toEqual(['School']);
   });
   test('has no duplicate labels', () => {
-    expect(findLabels('do homework and hw and school')).toEqual(['school']);
+    expect(findLabels('do homework and hw and school')).toEqual(['School']);
   });
 });
 
@@ -179,7 +179,7 @@ describe('applyPattern()', () => {
     ).toMatchObject({
       type: COMMIT,
       description: 'did some things',
-      start: today() - HOUR * 4,
+      start: new Date(today() - HOUR * 4),
       end: today(),
       duration: HOUR * 4,
       timestamp: today(),
@@ -187,7 +187,7 @@ describe('applyPattern()', () => {
   });
   test('NLP commits', () => {
     expect(
-      applyPattern('$1 at $DATE1', 'did some things at 4pm yesterday'),
+      applyPattern('$1', 'did some things at 4pm yesterday'),
     ).toMatchObject({
       type: COMMIT,
       description: 'did some things',
@@ -254,7 +254,7 @@ describe('applyAllPatterns()', () => {
     expect(applyAllPatterns('do something at 4pm tomorrow')).toContainEqual({
       type: PROMISE,
       priority: -1,
-      description: 'do something ',
+      description: 'do something',
       timestamp: today(),
       start: chrono.parseDate('4pm tomorrow'),
       end: undefined,

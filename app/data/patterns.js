@@ -248,6 +248,7 @@ export const applyPattern = (pattern, str) => {
 
   return {
     ...result,
+    description: result.description.trim(),
     timestamp: today(),
   };
 };
