@@ -21,8 +21,8 @@ export default function Omnibar() {
 
   // }
 
-  const renderSuggestion = suggestion => (
-    <div className="suggestion">
+  const renderSuggestion = (suggestion, { isHighlighted }) => (
+    <div className={`suggestion ${isHighlighted ? 'highlighted' : ''}`}>
       {suggestion.type === COMMIT && (
         <div className="tag tag-commit">
           <Emoji symbol="✅" />
@@ -51,11 +51,16 @@ export default function Omnibar() {
   // You already implemented this logic above, so just use it.
   const onSuggestionsFetchRequested = data => {
     setSuggestion(applyAllPatterns(data.value));
+    // console.log(suggestions);
   };
 
   // Autosuggest will call this function every time you need to clear suggestions.
   const onSuggestionsClearRequested = () => {
     setSuggestion([]);
+  };
+
+  const onSuggestionSelected = () => {
+    setValue('');
   };
 
   const formatDate = data => {
@@ -117,10 +122,12 @@ export default function Omnibar() {
       /> */}
       <Autosuggest
         suggestions={suggestions}
-        getSuggestionValue={suggestion => suggestion.name}
+        getSuggestionValue={suggestion => suggestion.description}
         onSuggestionsFetchRequested={onSuggestionsFetchRequested}
         onSuggestionsClearRequested={onSuggestionsClearRequested}
         renderSuggestion={renderSuggestion}
+        onSuggestionSelected={onSuggestionSelected}
+        highlightFirstSuggestion
         inputProps={{
           placeholder: "What's happening?",
           value,

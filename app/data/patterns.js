@@ -168,7 +168,6 @@ export const checkPattern = (pattern, str) => {
       }
     } else reconstructedStr += ` ${chunk}`;
   });
-
   return valid && clean(reconstructedStr) === clean(str);
 };
 
@@ -243,7 +242,7 @@ export const applyPattern = (pattern, str) => {
         today(),
       );
     }
-    console.log(result);
+    // console.log(result);
   }
 
   return {
@@ -257,7 +256,10 @@ export const applyAllPatterns = str => {
   let result = [];
   if (clean(str) === '') return result;
   Object.keys(DEFAULT_PATTERNS).forEach(pattern => {
-    if (checkPattern(pattern, str)) result.push(applyPattern(pattern, str));
+    if (checkPattern(pattern, str)) {
+      // console.log(`${pattern} valid: ${str}`);
+      result.push(applyPattern(pattern, str));
+    }
   });
   result = result.sort((a, b) => b.priority - a.priority);
   if (result.length > 1) {
